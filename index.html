@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电影冷知识盲盒</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 引入优雅的思源宋体/系统自带宋体作为主标题字体，增强电影高级感 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
+
+        :root {
+            --primary: #A67968;
+            --primary-light: rgba(166, 121, 104, 0.4);
+            --primary-glow: rgba(166, 121, 104, 0.8);
+            --bg-dark: #0f0c0b;
+            --cube-size: 100px;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: radial-gradient(circle at center, #241a16 0%, var(--bg-dark) 100%);
+            color: #f7edea;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .serif-text {
+            font-family: 'Noto Serif SC', 'Songti SC', serif;
+        }
+
+        /* 3D 立方体容器 */
+        .scene {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            perspective: 800px;
+            z-index: 10;
+        }
+
+        .cube-wrapper {
+            width: var(--cube-size);
+            height: var(--cube-size);
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .cube-wrapper:hover {
+            transform: translateY(-15px) scale(1.05);
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(-20deg) rotateY(45deg);
+            transition: transform 1s ease;
+            animation: float 4s ease-in-out infinite alternate;
+        }
+
+        /* 给三个立方体不同的浮动延迟时间 */
+        .cube-wrapper:nth-child(1) .cube { animation-delay: 0s; }
+        .cube-wrapper:nth-child(2) .cube { animation-delay: -1.3s; }
+        .cube-wrapper:nth-child(3) .cube { animation-delay: -2.6s; }
+
+        @keyframes float {
+            0% { transform: rotateX(-20deg) rotateY(45deg) translateY(0); }
+            100% { transform: rotateX(-25deg) rotateY(50deg) translateY(-10px); }
+        }
+
+        .cube-wrapper:hover .cube {
+            animation-play-state: paused;
+            transform: rotateX(-15deg) rotateY(35deg) translateY(-5px);
+        }
+
+        .face {
+            position: absolute;
+            width: var(--cube-size);
+            height: var(--cube-size);
+            border: 1px solid var(--primary-glow);
+            background: rgba(166, 121, 104, 0.1);
+            backdrop-filter: blur(4px);
+            box-shadow: inset 0 0 20px var(--primary-light), 0 0 15px rgba(166, 121, 104, 0.2);
+            transition: all 0.4s ease;
+        }
+
+        .cube-wrapper:hover .face {
+            background: rgba(166, 121, 104, 0.2);
+            box-shadow: inset 0 0 30px var(--primary-glow), 0 0 25px var(--primary-light);
+        }
+
+        .front  { transform: rotateY(0deg) translateZ(calc(var(--cube-size) / 2)); }
+        .back   { transform: rotateY(180deg) translateZ(calc(var(--cube-size) / 2)); }
+        .right  { transform: rotateY(90deg) translateZ(calc(var(--cube-size) / 2)); }
+        .left   { transform: rotateY(-90deg) translateZ(calc(var(--cube-size) / 2)); }
+        .top    { transform: rotateX(90deg) translateZ(calc(var(--cube-size) / 2)); background: rgba(166, 121, 104, 0.25); }
+        .bottom { transform: rotateX(-90deg) translateZ(calc(var(--cube-size) / 2)); }
+
+        /* 模态框动画 */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95) translateY(20px);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px rgba(166, 121, 104, 0.5);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 640px) {
+            .scene { gap: 1.5rem; flex-wrap: wrap; }
+            :root { --cube-size: 70px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 背景光效 -->
+    <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(circle at 50% 30%, rgba(166, 121, 104, 0.15), transparent 60%);"></div>
+
+    <!-- 主界面 -->
+    <div id="main-view" class="relative z-10 flex flex-col items-center justify-center w-full transition-opacity duration-700">
+        <div class="mb-16 text-center tracking-widest">
+            <h1 class="serif-text text-4xl md:text-5xl font-light mb-4 text-[#A67968] glow-text">电影盲盒</h1>
+            <p class="text-sm md:text-base text-gray-400 font-light tracking-[0.2em] opacity-80">点击一个盲盒，抽取一个电影冷知识</p>
+        </div>
+
+        <div class="scene">
+            <!-- 立方体 1 -->
+            <div class="cube-wrapper" onclick="openBox(0)">
+                <div class="cube">
+                    <div class="face front"></div><div class="face back"></div>
+                    <div class="face right"></div><div class="face left"></div>
+                    <div class="face top"></div><div class="face bottom"></div>
+                </div>
+            </div>
+            <!-- 立方体 2 -->
+            <div class="cube-wrapper" onclick="openBox(1)">
+                <div class="cube">
+                    <div class="face front"></div><div class="face back"></div>
+                    <div class="face right"></div><div class="face left"></div>
+                    <div class="face top"></div><div class="face bottom"></div>
+                </div>
+            </div>
+            <!-- 立方体 3 -->
+            <div class="cube-wrapper" onclick="openBox(2)">
+                <div class="cube">
+                    <div class="face front"></div><div class="face back"></div>
+                    <div class="face right"></div><div class="face left"></div>
+                    <div class="face top"></div><div class="face bottom"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果展示模态框 -->
+    <div id="result-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/60 backdrop-blur-md">
+        <div id="modal-content" class="modal-enter relative w-[90%] max-w-2xl bg-[#14100e] border border-[#A67968]/30 rounded-sm p-8 md:p-12 shadow-2xl overflow-hidden">
+            <!-- 装饰线 -->
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#A67968] to-transparent opacity-60"></div>
+            
+            <div class="relative z-10 flex flex-col items-center text-center">
+                <div class="text-[#A67968] mb-6">
+                    <svg class="w-8 h-8 opacity-70" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" opacity="0"/><path d="M19.5 3h-15C3.12 3 2 4.12 2 5.5v13C2 19.88 3.12 21 4.5 21h15c1.38 0 2.5-1.12 2.5-2.5v-13C22 4.12 20.88 3 19.5 3zm-15 2h15c.28 0 .5.22.5.5v1.5h-16V5.5c0-.28.22-.5.5-.5zm15 14h-15c-.28 0-.5-.22-.5-.5v-8.5h16v8.5c0 .28-.22.5-.5.5z"/><path d="M8 12.5l5 3-5 3z" fill="#A67968"/></svg>
+                </div>
+                
+                <h2 id="movie-title" class="serif-text text-2xl md:text-3xl font-bold text-white mb-6 tracking-wide glow-text">《电影名称》</h2>
+                
+                <div class="w-12 h-[1px] bg-[#A67968] opacity-50 mb-6"></div>
+                
+                <p id="movie-trivia" class="serif-text text-base md:text-lg text-gray-300 leading-relaxed font-light mb-10 text-justify px-4">
+                    这里是电影冷知识的内容。
+                </p>
+                
+                <button onclick="closeBox()" class="group relative px-8 py-3 overflow-hidden rounded-full border border-[#A67968]/50 text-sm tracking-widest text-[#A67968] transition-all hover:bg-[#A67968] hover:text-[#14100e] hover:border-transparent">
+                    <span class="relative z-10 font-medium">重新抽取</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 精选的高级电影冷知识库（豆瓣TOP250特辑，共200条）
+        const triviaData = [
+            { title: "《肖申克的救赎》", fact: "片中安迪用来藏鹤嘴锄的《圣经》，打开的那一页正好是《出埃及记》，暗示了他的越狱计划。" },
+            { title: "《肖申克的救赎》", fact: "瑞德（摩根·弗里曼）假释文件上的青年照片，其实是他亲生儿子阿方索·弗里曼的照片。" },
+            { title: "《肖申克的救赎》", fact: "为了不惊动动物保护组织，安迪在饭盒里发现并喂给乌鸦的那条虫子，是剧组特意找来的一条“自然死亡”的虫子。" },
+            { title: "《霸王别姬》", fact: "张国荣为了演好程蝶衣，开机前在北京生活了半年专心学习京剧，片中大部分京剧动作都是他亲自完成的。" },
+            { title: "《霸王别姬》", fact: "巩俐在拍摄“菊仙跳楼”戏份时因为恐高非常害怕，最后是喝了酒壮胆才完成了拍摄。" },
+            { title: "《阿甘正传》", fact: "电影中阿甘无论是在幼年、青年还是中年，每次经历年龄跨度的转折点时，总是穿着同一款式的蓝色格子衬衫。" },
+            { title: "《阿甘正传》", fact: "片中阿甘打乒乓球时神乎其技的接球动作，其实球是完全不存在的，全是后期加入的CGI特效。" },
+            { title: "《泰坦尼克号》", fact: "杰克为露丝画裸体素描时的特写镜头，那双手其实属于导演詹姆斯·卡梅隆。因为卡梅隆是左撇子，后期还做了镜像处理。" },
+            { title: "《泰坦尼克号》", fact: "老年露丝身边的博美犬是有历史依据的，泰坦尼克号沉没时，确实有三只狗幸存下来，其中两只是博美。" },
+            { title: "《这个杀手不太冷》", fact: "里昂细心照料的那盆植物是一盆万年青（银皇后），象征着他孤独但顽强的生命力。" },
+            { title: "《这个杀手不太冷》", fact: "娜塔莉·波特曼试镜时由于年纪太小（仅11岁）差点被刷掉，但她当场表演了一段极其震撼的哭戏，直接拿下了角色。" },
+            { title: "《美丽人生》", fact: "片中饰演男主角妻子的女演员，在现实生活中真的是导演兼男主罗伯托·贝尼尼的妻子。" },
+            { title: "《美丽人生》", fact: "男主在集中营的囚服号码是“1039”，这个数字实际上是奥斯卡金像奖的最佳外语片申报编号。" },
+            { title: "《千与千寻》", fact: "千寻的父母变成猪后吃得停不下来的那个软糯食物，其实是台湾特产“肉圆”。" },
+            { title: "《千与千寻》", fact: "片中配音演员为了表现出角色边吃东西边说话的含混感，真的是在录音室里一边吃肯德基一边配音的。" },
+            { title: "《辛德勒的名单》", fact: "全片几乎是黑白的，唯一有色彩的红衣小女孩，象征着大屠杀中无辜逝去的生命与希望的破灭。" },
+            { title: "《辛德勒的名单》", fact: "导演斯皮尔伯格拒绝接受这部电影的任何个人片酬，他认为如果拿了这笔钱，那就是“血腥钱”。" },
+            { title: "《盗梦空间》", fact: "影片用来唤醒梦中人的那首法国老歌，其节奏放慢后，正是整部电影气势磅礴的主旋律。" },
+            { title: "《盗梦空间》", fact: "导演诺兰表示，判断主角是否在梦境中的真正陀螺不是那个金属陀螺，而是他的婚戒——梦里他戴着戒指，现实中没有。" },
+            { title: "《星际穿越》", fact: "剧组真的在加拿大种了500英亩的玉米地来拍摄地球枯竭的场景。拍完后他们把玉米卖掉，甚至还赚了一笔钱。" },
+            { title: "《星际穿越》", fact: "片中的黑洞“卡冈图雅”是物理学家基普·索恩通过真实的物理方程式推导生成的，被认为是影史上最符合物理学定律的黑洞模型。" },
+            { title: "《楚门的世界》", fact: "电影拍摄期间，很多群演真的以为自己在参与一个叫做“楚门的世界”的真人秀节目，完全入戏。" },
+            { title: "《楚门的世界》", fact: "楚门每天早上吃的维生素D是为了补充阳光，因为他一直生活在巨大的摄影棚里，根本接触不到真正的太阳光。" },
+            { title: "《忠犬八公的故事》", fact: "电影中饰演八公的秋田犬一共有三只，分别扮演它的幼年、成年和老年时期。" },
+            { title: "《海上钢琴师》", fact: "男主1900在风浪中随着钢琴滑动的经典长镜头，其实是剧组在一个液压摇晃平台上实景拍摄的。" },
+            { title: "《三傻大闹宝莱坞》", fact: "阿米尔·汗在拍摄这部电影扮演20岁大学生时，实际上已经44岁了，但他通过极低体脂率完美还原了年轻态。" },
+            { title: "《机器人总动员》", fact: "瓦力（WALL-E）的名字其实是对迪士尼创始人华特·迪士尼（Walter Elias Disney）的致敬。" },
+            { title: "《放牛班的春天》", fact: "片中合唱团的男孩们其实并不是专业演员，而是导演从法国各地找来的真正拥有天籁童声的小学生。" },
+            { title: "《大话西游之大圣娶亲》", fact: "周星驰在城墙上那句经典的“他好像一条狗啊”，其实是在调侃自己刚出道时被别人嘲笑的样子。" },
+            { title: "《疯狂动物城》", fact: "电影里出现的新闻播报员，在中国版是熊猫，北美版是驼鹿，日本版是狸猫，澳大利亚版则是考拉。" },
+            { title: "《无间道》", fact: "梁朝伟在天台上的那句经典台词“对不起，我是警察”，原本剧本里是没有“对不起”三个字的，是他临场加的。" },
+            { title: "《教父》", fact: "马龙·白兰度在书房里抚摸的那只著名花猫原本不在剧本中，那是他在片场捡到的流浪猫，临场发挥成就了经典。" },
+            { title: "《教父》", fact: "片中只要出现“橘子”，就意味着接下来的剧情里会有重要人物遭遇死亡或危险。" },
+            { title: "《当幸福来敲门》", fact: "电影结尾，男主威尔·史密斯在街头带着儿子走时，从他们身边路过的那个西装革履的黑人，正是男主原型的真实人物克里斯·加纳。" },
+            { title: "《触不可及》", fact: "电影改编自真实故事，现实中的黑人护工其实是个阿拉伯人，但为了戏剧效果改成了黑人设定。" },
+            { title: "《龙猫》", fact: "龙猫（Totoro）的名字来源于小女孩梅对“Troll”（巨魔）的发音错误。" },
+            { title: "《蝙蝠侠：黑暗骑士》", fact: "希斯·莱杰在拍摄炸毁医院的那场戏时，引爆器真的卡壳了，他即兴拍打遥控器的反应被导演完整保留了下来。" },
+            { title: "《活着》", fact: "葛优凭借这部电影成为了戛纳电影节历史上第一位华人影帝。" },
+            { title: "《乱世佳人》", fact: "这部1939年的电影是影史上第一部获得奥斯卡最佳影片的彩色电影。" },
+            { title: "《寻梦环游记》", fact: "片中的亡灵世界设定：只要现实中还有人记住你，你就不会在亡灵世界消失，这一设定参考了墨西哥的亡灵节文化。" },
+            { title: "《飞屋环游记》", fact: "为了让房子飞起来，皮克斯动画师计算出实际上需要大约2650万个气球，但电影画面中只画了约2万个气球。" },
+            { title: "《指环王：王者无敌》", fact: "这部电影在当年的奥斯卡上获得了11项提名，并且11项全部中奖，命中率100%，创下历史纪录。" },
+            { title: "《哈利·波特与魔法石》", fact: "电影中霍格沃茨大厅里的悬浮蜡烛，一开始是实物吊着威亚拍摄的，但因为热气会烧断细线掉下来，后来全部改成了特效。" },
+            { title: "《摔跤吧！爸爸》", fact: "阿米尔·汗为了拍摄男主不同年龄段的体态，先是暴增了28公斤变成大肚腩，拍完中年戏份后又疯狂减脂练出八块腹肌拍青年戏份。" },
+            { title: "《罗马假日》", fact: "奥黛丽·赫本把手伸进“真理之口”被吓到的反应是真实的，因为格里高利·派克事先串通导演把手藏在袖子里假装手断了。" },
+            { title: "《窃听风暴》", fact: "为了高度还原东德时期的压抑感，电影中所有的窃听设备借用的是当年史塔西（东德国家安全局）的真实仪器。" },
+            { title: "《天堂电影院》", fact: "电影结尾男主看到的那段由无数接吻镜头剪接而成的胶片，是影史上最著名的致敬电影的蒙太奇段落。" },
+            { title: "《辩护人》", fact: "男主宋佑硕的原型，是韩国已故前总统卢武铉。电影展现了他在成为总统前作为人权律师的真实经历。" },
+            { title: "《十二怒汉》", fact: "为了营造出封闭房间里越来越压抑的气氛，导演在拍摄过程中不断换用焦距更长的镜头，让背景看起来越来越逼近人物。" },
+            { title: "《狮子王》", fact: "迪士尼最初并不看好《狮子王》，把主力画师都派去画《风中奇缘》了，结果《狮子王》成了史上最卖座的2D动画电影。" },
+            { title: "《死亡诗社》", fact: "结尾学生们站上课桌高喊“哦，船长，我的船长”时，那首诗是惠特曼为纪念林肯遇刺而作的。" },
+            { title: "《钢琴家》", fact: "主演阿德里安·布劳迪为了体会角色的失去感，卖掉了车子和房子，与女友分手，并暴瘦了30磅，最终拿下奥斯卡最年轻影帝。" },
+            { title: "《搏击俱乐部》", fact: "在电影的每一个场景中，背景里都隐约藏着一杯星巴克咖啡，这是导演大卫·芬奇对消费主义的讽刺。" },
+            { title: "《少年派的奇幻漂流》", fact: "电影中那只逼真的孟加拉虎“理查德·帕克”，全片80%以上的镜头都是CG特效制作的。" },
+            { title: "《饮食男女》", fact: "片头郎雄做菜那段行云流水的炫技刀工，其实是由台湾著名厨师施建发作为替身完成的。" },
+            { title: "《绿皮书》", fact: "片名“绿皮书”真实存在于历史上，是一本专为黑人编写的旅行指南，上面标注了哪些旅馆和餐厅允许黑人进入。" },
+            { title: "《剪刀手爱德华》", fact: "这是约翰尼·德普和导演蒂姆·伯顿的第一次合作。德普在全片中只有169个字的台词。" },
+            { title: "《勇敢的心》", fact: "梅尔·吉布森饰演的华莱士在刑场上高呼的“Freedom（自由）”，原本剧本里是没有的，是他即兴喊出来的。" },
+            { title: "《致命魔术》", fact: "片中特斯拉发明的那个神奇机器，实际上是电影虚构的，现实中特斯拉并未造出能复制物体的机器。" },
+            { title: "《杀人回忆》", fact: "电影结尾宋康昊直视镜头的画面，是因为导演认为真正的凶手此时也可能坐在电影院里看这部电影。" },
+            { title: "《幽灵公主》", fact: "这是宫崎骏第一次在动画电影中大量使用CG电脑特效（约占全片10%），用来处理复杂的自然景象和邪魔神的触须。" },
+            { title: "《黑客帝国》", fact: "片头标志性的绿色“代码雨”，实际上大多是扫描了设计师妻子的日本烹饪书里的寿司食谱（片假名）倒置而成的。" },
+            { title: "《沉默的羔羊》", fact: "安东尼·霍普金斯饰演的汉尼拔在全片中只出现了16分钟，却凭借这极短的出场时间拿下了奥斯卡最佳男主角。" },
+            { title: "《第六感》", fact: "为了不让观众提前猜到结局，导演设定了一个规则：在布鲁斯·威利斯饰演的男主身边，绝对不出现任何红色的物品。" },
+            { title: "《喜剧之王》", fact: "成龙在片中客串了一个死尸替身，这是因为当时成龙的《玻璃樽》和周星驰的《喜剧之王》正好在隔壁片场拍摄，两人互相客串了对方的电影。" },
+            { title: "《禁闭岛》", fact: "电影中所有的“火”都代表了男主的幻觉，而所有的“水”都代表了现实。" },
+            { title: "《玛丽和马克思》", fact: "这部黏土动画电影使用了超过212个黏土人偶和475个微缩道具，拍摄耗时将近5年才完成。" },
+            { title: "《阳光灿烂的日子》", fact: "夏雨因为长得太像年轻时的姜文而被选中，这也是他第一次演电影，直接拿下了威尼斯电影节最年轻的影帝。" },
+            { title: "《拯救大兵瑞恩》", fact: "开场奥马哈海滩登陆战的镜头极其真实血腥，导致电影上映后很多二战老兵患上了创伤后应激障碍（PTSD）。" },
+            { title: "《功夫》", fact: "电影中“包租婆”追赶周星驰的那段公路狂奔戏，致敬了华纳经典的动画片《乐一通》中的BB鸟和歪心狼。" },
+            { title: "《卧虎藏龙》", fact: "周润发在竹林打斗那场戏是真的吊在离地极高的竹子上拍的，因为恐高，他在拍摄时甚至被吓哭了。" },
+            { title: "《重庆森林》", fact: "梁朝伟对着肥皂和毛巾自言自语的桥段，灵感来源于导演王家卫自己在家中无聊时的举动。" },
+            { title: "《甜蜜蜜》", fact: "张曼玉在认尸那场戏中先笑后哭的教科书级表演，原本是个意外的笑场，但导演陈可辛觉得这种荒谬感极佳，便保留了下来。" },
+            { title: "《罗马》", fact: "电影中所有的场景和道具，甚至连阳光照进屋内的角度，都是导演阿方索·卡隆根据自己童年记忆1:1精确还原的。" },
+            { title: "《爱在黎明破晓前》", fact: "男女主在唱片店试听室里的尴尬又暧昧的眼神交流，完全没有台词，只靠眼神和局促的动作撑起了整整两分钟的经典片段。" },
+            { title: "《大鱼》", fact: "电影结尾父亲葬礼上的那些奇人异士都是真实的特型演员，其中双胞胎姐妹现实中是真的连体双胞胎。" },
+            { title: "《头脑特工队》", fact: "电影中记忆球的颜色代表不同情绪，而唯一拥有混色记忆球的只有核心记忆，代表着成熟后情绪的复杂化。" },
+            { title: "《哈尔的移动城堡》", fact: "城堡的移动音效并不是合成的，而是剧组收录了真实的摩擦木材和金属运转的声音。" },
+            { title: "《布达佩斯大饭店》", fact: "导演韦斯·安德森在这部电影中使用了三种不同的画面比例（1.37:1, 2.35:1, 1.85:1），用来区分不同的历史年代。" },
+            { title: "《海豚湾》", fact: "剧组为了潜入日本太地町偷拍海豚屠杀，使用了藏在假岩石里的隐蔽摄像机和水下麦克风，像拍谍战片一样完成了纪录片。" },
+            { title: "《V字仇杀队》", fact: "电影中多米诺骨牌倒塌的场景没有使用任何CG特效，是4名专业人员花了整整200个小时手工摆放了22000张骨牌实拍的。" },
+            { title: "《大独裁者》", fact: "卓别林在片尾那段长达5分钟的反战演讲，是他本人在电影生涯中第一次在银幕上发出真正的声音（此前均为默片）。" },
+            { title: "《七宗罪》", fact: "电影的片头字幕没有使用标准的字体打印，而是纯手工一点一点刮出来的，以契合连环杀手的变态心理。" },
+            { title: "《神隐少女》", fact: "白龙的原型其实是宫崎骏对日本古代传说中“水神”的想象，所以他拥有控制水和飞行的能力。" },
+            { title: "《蝴蝶效应》", fact: "电影一共拍摄了四个不同的结局，其中最黑暗的一个导演剪辑版结局是：男主在母亲的子宫里用脐带勒死了自己。" },
+            { title: "《心灵捕手》", fact: "马特·达蒙和本·阿弗莱克其实是凭借这部他们自己写的剧本，拿到了奥斯卡最佳原创剧本奖，一举成名。" },
+            { title: "《让子弹飞》", fact: "片中葛优吃着火锅唱着歌突然被劫的桥段，那只被炸上天的巨大马匹其实是一只道具马。" },
+            { title: "《低俗小说》", fact: "片中乌玛·瑟曼吸毒过量被扎针的那场戏，其实是倒放。真实拍摄时约翰·特拉沃尔塔是把针筒从她胸口拔出来。" },
+            { title: "《上帝之城》", fact: "片中出演贫民窟黑帮的演员大多不是专业演员，而是导演直接从里约热内卢的贫民窟里找来的当地孩子。" },
+            { title: "《无人区》", fact: "为了拍好这部荒漠公路片，黄渤不仅在新疆体验生活两个月，还暴瘦了十几斤来贴近角色形象。" },
+            { title: "《卡萨布兰卡》", fact: "那句著名的台词“世界上有那么多小镇，那么多酒馆，她偏偏走进了我这家”，常年位居好莱坞百大经典台词前列。" },
+            { title: "《黑天鹅》", fact: "娜塔莉·波特曼为了拍摄这部电影，坚持了长达一年的高强度芭蕾舞训练，甚至还跳断了一根肋骨。" },
+            { title: "《末代皇帝》", fact: "这是历史上第一部获准进入北京故宫太和殿内部进行实景拍摄的西方电影。" },
+            { title: "《一一》", fact: "杨德昌导演借用小男孩洋洋拿着相机拍人后脑勺的设定，表达了“人只能看到一半的事情，另一半需要别人拍给你看”的哲学概念。" },
+            { title: "《指环王：护戒使者》", fact: "为了展现霍比特人与人类的身高差，剧组大量使用了强制透视（强迫透视）的拍摄手法，而非全部依赖电脑特效。" },
+            { title: "《阿凡达》", fact: "纳美语并不是剧组随便编造的乱码，而是卡梅隆专门聘请语言学教授发明的一套拥有完整语法和词汇体系的全新语言。" },
+            { title: "《楚门的世界》", fact: "在现实中，心理学上真的诞生了一种名为“楚门综合征”的心理疾病，患者会认为自己生活在一个被全天候直播的真人秀里。" },
+            { title: "《电锯惊魂》", fact: "这部开创性的恐怖片第一部，其实只花了短短18天就拍摄完成了，而且预算极低。" },
+            { title: "《黑客帝国》", fact: "基努·里维斯在开拍前隐瞒了自己颈椎受伤的手术，导致他在片中前期的很多打斗动作都显得有些僵硬，但这恰好符合了角色初出茅庐的设定。" },
+            { title: "《情书》", fact: "电影开头中山美穗在雪地里闭气长达几分钟的唯美长镜头，其实是她在现实中真的屏住呼吸完成的。" },
+            { title: "《海蒂和爷爷》", fact: "片中阿尔卑斯山的绝美风光并不是特效，而是剧组在瑞士格劳宾登州的深山里实地取景拍摄的。" },
+            { title: "《唐伯虎点秋香》", fact: "片中“还我漂漂拳”打完后秋香脸肿得像猪头的那场戏，巩俐因为偶像包袱拒绝扮丑，最后是由一位替身演员完成的。" },
+            { title: "《英雄本色》", fact: "周润发饰演的小马哥用钞票点烟的经典动作，其实是用道具假钞拍的，但在当时依然引起了巨大的轰动。" },
+            { title: "《萤火虫之墓》", fact: "原作者野坂昭如在看这部动画电影的首映时，因为剧情过于还原他自己的痛苦经历，在中途就崩溃大哭离场了。" },
+            { title: "《贫民窟的百万富翁》", fact: "片中男主小时候为了拿到偶像签名而跳进粪坑的场景，那个“粪坑”其实是用巧克力和花生酱混合做成的。" },
+            { title: "《真爱至上》", fact: "休·格兰特饰演的英国首相在唐宁街10号跳舞的那段经典戏，他本人一开始极其抗拒拍摄，觉得太尴尬了。" },
+            { title: "《音乐之声》", fact: "电影开头朱莉·安德鲁斯在阿尔卑斯山上张开双臂旋转的镜头，其实每次直升机飞过时产生的巨大气流都会把她吹倒。" },
+            { title: "《海王》", fact: "为了展现水下头发飘逸的感觉，演员们的头发在后期特效中几乎全是CG一根一根重新画上去的。" },
+            { title: "《蝙蝠侠：黑暗骑士崛起》", fact: "汤姆·哈迪饰演的贝恩，因为戴着面罩导致声音太含糊，导演诺兰在后期制作时不得不对他的所有台词重新进行了混音处理。" },
+            { title: "《玩具总动员》", fact: "这是影史上第一部完全使用电脑三维动画（CGI）技术制作的长篇动画电影。" },
+            { title: "《疯狂的石头》", fact: "黄渤在下水道里打电话那场戏，因为下水道太臭，他出来后吐了很久，这也成为了他演艺生涯的经典一幕。" },
+            { title: "《星际穿越》", fact: "配乐大师汉斯·季默在为本片配乐时，导演诺兰并没有告诉他这是一部科幻片，只给了他一页关于一位父亲和孩子的故事大纲。" },
+            { title: "《大鱼海棠》", fact: "电影里的客家土楼场景，是主创团队特意去福建永定实地考察并高度还原绘制的。" },
+            { title: "《超能陆战队》", fact: "大白（Baymax）柔软圆润的造型灵感，其实来源于日本的传统祈福铃铛。" },
+            { title: "《血战钢锯岭》", fact: "男主戴斯蒙德·道斯在真实战场上救下的人数其实远不止电影里拍的75人，但他本人极其谦虚，只承认救了50人，最后折中成了75人。" },
+            { title: "《爱在日落黄昏时》", fact: "作为系列的第二部，这部电影的实际播放时长，刚好等于片中男女主角在巴黎重逢共度的那真实的一个多小时。" },
+            { title: "《蜘蛛侠：平行宇宙》", fact: "为了模仿美漫翻页的顿挫感，这部动画电影打破了常规的24帧，在很多动作场景中采用了12帧甚至更低的抽帧技术。" },
+            { title: "《我是山姆》", fact: "西恩·潘饰演的智障父亲在买鞋时因为店员的异样眼光而崩溃大哭，这段表演完全是他临场发挥的，没有剧本。" },
+            { title: "《冰川时代》", fact: "那只为了藏橡果而引发大陆漂移的松鼠名叫Scrat，它本来只是个边缘配角，但因为太受观众欢迎，硬生生成了全系列的核心线索。" },
+            { title: "《花样年华》", fact: "张曼玉在片中一共换了20多套精美绝伦的旗袍，这些旗袍全部由香港著名的旗袍大师张叔平手工定制。" },
+            { title: "《东邪西毒》", fact: "由于王家卫拍摄进度太慢，投资方怕亏本，刘镇伟就拉着原班人马在隔壁用不到一个月的时间拍出了一部贺岁喜剧《东成西就》。" },
+            { title: "《教父2》", fact: "罗伯特·德尼罗为了饰演年轻时的维托·柯里昂，特意花了几个月时间去西西里岛学习正宗的西西里方言。" },
+            { title: "《异形》", fact: "小异形从约翰·赫特胸口破胸而出的那场戏，除了赫特本人，其他演员都不知道会发生什么，所以他们银幕上惊恐的反应是完全真实的。" },
+            { title: "《闪灵》", fact: "经典镜头“Here's Johnny!”其实是杰克·尼科尔森即兴加的台词，灵感来源于当时美国一档著名脱口秀的开场白。" },
+            { title: "《谍影重重》", fact: "马特·达蒙在片中展示的干脆利落的近身格斗术，是一种名为“菲律宾魔杖”的真实致命武术。" },
+            { title: "《复仇者联盟4》", fact: "钢铁侠最后那句引爆泪点的“I am Iron Man”，其实是后期补拍时导演灵机一动加上去的，呼应了第一部电影的结尾。" },
+            { title: "《这个男人来自地球》", fact: "这部被称为神作的科幻片，全片几乎只有一个室内场景和几个人聊天，拍摄成本仅为1万美元。" },
+            { title: "《大闹天宫》", fact: "这部1964年的中国经典动画片，全凭画师手工一笔一画绘制，十几分钟的动画就需要画出七八千张原画。" },
+            { title: "《红海行动》", fact: "电影中出现的那艘军舰，是中国海军真正的054A型导弹护卫舰“临沂舰”，这也是中国海军首次允许实舰参与电影拍摄。" },
+            { title: "《记忆碎片》", fact: "电影采用黑白倒叙和彩色顺叙交替的剪辑手法，为了不让观众看晕，DVD版本里其实隐藏了一个按时间顺序正常播放的彩蛋版本。" },
+            { title: "《小丑》", fact: "杰昆·菲尼克斯为了完美呈现小丑病态的身体，每天只吃一个苹果，在极短时间内暴瘦了47斤。" },
+            { title: "《看不见的客人》", fact: "导演在写剧本时，为了确保逻辑严密没有漏洞，自己在家里做了一个巨大的线索板，推演了无数遍反转的可能性。" },
+            { title: "《让子弹飞》", fact: "黄四郎替身的头颅被砍下后扔出来的那个假头，剧组为了做得逼真，其实是倒模了周润发本人的脸做出来的道具。" },
+            { title: "《美丽心灵》", fact: "罗素·克劳饰演的纳什在玻璃上写满数学公式的经典画面，那些复杂的公式是由真实的数学教授提供并指导书写的。" },
+            { title: "《三块广告牌》", fact: "电影上映后，现实中世界各地的人们开始模仿电影，租下三块连着的广告牌来表达对社会不公的抗议。" },
+            { title: "《无耻混蛋》", fact: "克里斯托弗·瓦尔兹饰演的纳粹军官精通四国语言，他在现实中也凭借这部电影亲自配音了德语和法语版本的自己。" },
+            { title: "《荒岛余生》", fact: "汤姆·汉克斯为了拍摄流落荒岛后的戏份，剧组停工了一年，等他减去50磅体重并留长了头发和胡子才恢复拍摄。" },
+            { title: "《猫鼠游戏》", fact: "电影中莱昂纳多饰演的诈骗犯原型弗兰克本人，在片尾客串了一个抓捕莱昂纳多的法国警察。" },
+            { title: "《黑客帝国》", fact: "著名的“子弹时间”特效，是使用了120台照相机排成一圈，按照预定程序连续拍照，然后用电脑拼合成的动态画面。" },
+            { title: "《千与千寻》", fact: "电影中巨婴坊宝宝哭闹的声音，其实是由两个分别叫做“神木隆之介”和“柊瑠美”的小朋友配音的。" },
+            { title: "《哈利·波特与阿兹卡班的囚徒》", fact: "导演阿方索·卡隆让三位主演各写一篇关于自己角色的论文，艾玛写了十几页，丹尼尔写了一页，而鲁伯特（罗恩）一个字没写，完全符合角色性格。" },
+            { title: "《海上钢琴师》", fact: "1900这个名字不仅代表他出生的年份，也象征着一个世纪的交替和他本人游离于时代之外的孤独。" },
+            { title: "《当幸福来敲门》", fact: "电影里那个魔方之所以被转得那么快，是因为威尔·史密斯在现实中特意找了魔方冠军拜师学艺，练就了真功夫。" },
+            { title: "《V字仇杀队》", fact: "V的面具原型来源于英国历史上的真实人物盖伊·福克斯，他曾试图炸毁英国议会大厦。" },
+            { title: "《楚门的世界》", fact: "电影结尾楚门摸到的那堵画着蓝天白云的巨大幕墙，现实拍摄中其实是一段极短的楼梯和一块普通的布景板。" },
+            { title: "《飞越疯人院》", fact: "为了追求绝对的真实感，电影不仅在真实的俄勒冈州精神病院拍摄，很多群演也是真正的精神病患者。" },
+            { title: "《爱在黎明破晓前》", fact: "这部电影的剧本非常松散，导演鼓励两位主演伊桑·霍克和朱莉·德尔佩将自己真实的价值观和感情观加入到台词中。" },
+            { title: "《大话西游》", fact: "紫霞仙子在至尊宝心里留下的一滴眼泪，原本剧本里是没有的，是朱茵在演戏时真情流露自然滴落的。" },
+            { title: "《龙猫》", fact: "宫崎骏原本只设计了一个小女孩角色，但在制作中途觉得一个女孩太单薄，于是把她拆分成了姐姐小月和妹妹小梅。" },
+            { title: "《无间道》", fact: "刘德华和梁朝伟在音响店试听蔡琴的《被遗忘的时光》，这首歌后来成为了测试高级音响的“国标神曲”。" },
+            { title: "《这个杀手不太冷》", fact: "加里·奥德曼饰演的变态警察在吃药后那段癫狂的身体扭动，完全是他即兴发挥的，把对面的让·雷诺都看呆了。" },
+            { title: "《星际穿越》", fact: "片中出现的机器人塔斯（TARS），其实不是纯特效，剧组制作了一个重达200磅的实体模型，由专人在背后操控移动。" },
+            { title: "《霸王别姬》", fact: "张丰毅在拍被打屁股的那场戏时，为了追求真实感，他主动要求真打，结果拍完后真的被打得皮开肉绽。" },
+            { title: "《活着》", fact: "电影原著小说里，福贵最后只剩下一头老牛相伴，而电影为了留有一丝希望，让外孙馒头活了下来。" },
+            { title: "《阿凡达》", fact: "卡梅隆早在他拍《泰坦尼克号》之前就写好了《阿凡达》的剧本，但因为当时的电脑特效技术无法实现，硬是等了十几年。" },
+            { title: "《让子弹飞》", fact: "张麻子给麻匪们发的面具是麻将筒子，这是因为导演姜文觉得麻将最能代表中国文化里的博弈和算计。" },
+            { title: "《神隐少女》", fact: "千寻在汤屋擦地板的动作，是宫崎骏要求动画师参考赛艇运动员划水的发力方式来画的，以表现出沉重感。" },
+            { title: "《指环王：双塔奇兵》", fact: "阿拉贡在踢飞半兽人头盔时发出的那声惨叫是真实的，因为维果·莫特森在踢的时候用力过猛，把脚趾踢骨折了。" },
+            { title: "《辛德勒的名单》", fact: "为了尊重历史，电影中在奥斯威辛集中营外的火车轨道场景都是在原址实地拍摄的。" },
+            { title: "《疯狂动物城》", fact: "树懒“闪电”之所以在车管所工作，其实是在疯狂暗讽现实中美国DMV（车管所）工作人员令人发指的办事效率。" },
+            { title: "《楚门的世界》", fact: "金·凯瑞凭借这部电影向世人证明了他不仅是个只会做夸张表情的喜剧演员，更是个顶级的正剧演员，并拿下了金球奖。" },
+            { title: "《西西里的美丽传说》", fact: "莫妮卡·贝鲁奇在广场上被众人点烟的那个经典名场面，剧本上写的是“每个男人都想点燃她的欲望”。" },
+            { title: "《盗梦空间》", fact: "电影中巴黎街头咖啡馆爆炸并折叠成碎片的慢动作镜头，不是电脑特效，而是用高压氮气真实引爆并用高速摄影机拍下来的。" },
+            { title: "《搏击俱乐部》", fact: "布拉德·皮特和爱德华·诺顿为了拍这部电影，真的去学习了拳击、跆拳道，甚至还去学了怎么制作肥皂。" },
+            { title: "《情书》", fact: "导演岩井俊二因为找不到符合要求的雪景，最后将剧组搬到了北海道的小樽，意外带火了这座城市的旅游业。" },
+            { title: "《海上钢琴师》", fact: "电影中那架被1900弹奏出残影的钢琴其实是道具，因为人类根本不可能以那种速度弹奏，录音是后期经过多轨合成的。" },
+            { title: "《十二怒汉》", fact: "这部影史神作全片只有1个室内场景，拍摄仅用了21天，成本仅34万美元，却成为了无可争议的影史经典。" },
+            { title: "《头脑特工队》", fact: "导演为了确保关于大脑和情绪的科学性，特意聘请了多位顶级神经科学家和心理学家作为电影顾问。" },
+            { title: "《狮子王》", fact: "木法沙死后云层中出现他面庞的画面，其实是对莎士比亚戏剧《哈姆雷特》中老国王鬼魂现身情节的致敬。" },
+            { title: "《哈利·波特与魔法石》", fact: "片中对角巷里的魔法商店其实很多都是实景搭建的，里面甚至放着真正的老鹰和猫头鹰。" },
+            { title: "《大话西游》", fact: "当年这部电影在香港和内地刚上映时票房惨败，直到几年后随着网络文化的兴起才在高校里被封神。" },
+            { title: "《美丽人生》", fact: "罗伯托·贝尼尼在奥斯卡颁奖典礼上听到自己获奖时，兴奋得直接踩着前排观众椅子的椅背跳上了舞台。" },
+            { title: "《泰坦尼克号》", fact: "在拍摄杰克和露丝在冰冷海水中的最后离别时，莱昂纳多冷得发抖，卡梅隆为了让他保持这种状态，偷偷在水池里加了冰块。" },
+            { title: "《阿甘正传》", fact: "阿甘跑步穿越美国的蒙太奇段落中，汤姆·汉克斯的亲弟弟吉姆·汉克斯在很多远景镜头里担任了他的替身。" },
+            { title: "《无间道》", fact: "黄秋生被从楼上扔下来砸在车顶的那场戏，因为过于逼真且毫无预兆，当时真的吓到了路过的香港市民。" },
+            { title: "《绿皮书》", fact: "托尼和唐的后代在现实中因为对电影情节的真实性产生分歧，曾爆发过激烈的口水战。" },
+            { title: "《教父》", fact: "黑手党曾对派拉蒙影业施压，要求电影中绝对不能出现“黑手党（Mafia）”这个词，剧组妥协了。" },
+            { title: "《星际穿越》", fact: "为了模拟沙尘暴，剧组动用了巨大的风扇，将大量特制的、安全的纤维素粉末吹向演员，大家每天都在“吃土”。" },
+            { title: "《疯狂的石头》", fact: "黄渤边跑边吃面包的经典长镜头，是因为他当时真的很饿，剧组又为了赶时间，干脆让他真吃真跑一镜到底。" },
+            { title: "《蝙蝠侠：黑暗骑士》", fact: "蝙蝠侠在香港大楼一跃而下的场景，是真的由替身演员从香港最高楼跳下实拍的，没有用蓝幕。" },
+            { title: "《寻梦环游记》", fact: "由于片中涉及大量的骷髅，这在中国的电影审查中原本是个大忌，但据传审核人员看片时被感动哭了，于是破例过审。" },
+            { title: "《少年派的奇幻漂流》", fact: "李安为了拍摄海浪的细节，特意在台湾台中建造了一个全世界最大的全自动波浪造浪池。" },
+            { title: "《死亡诗社》", fact: "罗宾·威廉姆斯在片中饰演的基汀老师，其实很大程度上融合了他本人高中时一位极具启迪性老师的特质。" },
+            { title: "《拯救大兵瑞恩》", fact: "斯皮尔伯格故意让所有演员去参加了为期一周的严苛新兵训练，唯独不让马特·达蒙（瑞恩）去，以此来激起其他演员对他的真实反感。" },
+            { title: "《黑天鹅》", fact: "娜塔莉·波特曼和导演达伦在拍摄期间其实经常发生争吵，因为导演故意试图用心理战术让波特曼陷入孤立无援的崩溃状态。" },
+            { title: "《小丑》", fact: "亚瑟在地铁里无法控制狂笑的桥段，是基于现实中一种真实的罕见神经系统疾病——假性延髓情绪（PBA）。" },
+            { title: "《沉默的羔羊》", fact: "朱迪·福斯特在第一次和安东尼·霍普金斯对戏时，被他隔着玻璃的凝视和语气真的吓得浑身发抖。" },
+            { title: "《飞越疯人院》", fact: "杰克·尼科尔森在拍摄期间极其入戏，甚至曾因为在片场与其他演员起冲突而差点拒绝走出更衣室。" },
+            { title: "《机器人总动员》", fact: "全片前40分钟几乎没有任何人类对话，纯靠机器人的肢体语言和电子音效推动剧情，这是动画史上的巨大冒险。" },
+            { title: "《上帝之城》", fact: "这部电影因为极其真实地反映了巴西里约热内卢贫民窟的黑帮生态，被誉为“巴西版的《无间道》与《教父》的结合体”。" },
+            { title: "《血战钢锯岭》", fact: "戴斯蒙德·道斯在现实中其实还曾被狙击手打穿了手臂，但他自己用担架杆绑住断臂坚持爬了回去，这一段导演觉得太扯了观众不信，就没拍。" },
+            { title: "《控方证人》", fact: "这部1957年的悬疑黑白片在片尾专门打出一行字幕，恳求观众走出电影院后千万不要剧透结局。" },
+            { title: "《窃听风暴》", fact: "男主乌尔里希·穆埃在现实中的前妻，正是东德史塔西（国家安全局）的线人，她曾向上级告密过穆埃的行踪。" },
+            { title: "《触不可及》", fact: "电影结尾放出了真实原型人物的视频，现实中那位截瘫的富翁至今依然健康地活着，并且还结了婚。" },
+            { title: "《辩护人》", fact: "宋康昊因为出演了这部政治敏感的电影，曾一度被韩国前政府列入“文化界黑名单”遭到封杀。" },
+            { title: "《摔跤吧！爸爸》", fact: "电影中那对姐妹花演员为了拍摄摔跤戏份，真的进行了长达9个月的专业摔跤魔鬼训练，受了无数次伤。" },
+            { title: "《三傻大闹宝莱坞》", fact: "电影里的那所帝国理工学院，其实是在印度顶尖的印度管理研究所班加罗尔分校实地取景拍摄的。" },
+            { title: "《忠犬八公的故事》", fact: "现实中真实的八公在日本涩谷车站等了主人整整10年，直到1935年因病去世。" },
+            { title: "《楚门的世界》", fact: "电影中除了楚门，所有人的名字都与好莱坞著名演员或历史人物有关，暗示了这是一个被剧本设定好的虚假世界。" }
+        ];
+
+        let isAnimating = false;
+
+        function openBox(index) {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            const mainView = document.getElementById('main-view');
+            const modal = document.getElementById('result-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            // 随机抽取一条冷知识
+            const randomTrivia = triviaData[Math.floor(Math.random() * triviaData.length)];
+            
+            document.getElementById('movie-title').innerText = randomTrivia.title;
+            document.getElementById('movie-trivia').innerText = randomTrivia.fact;
+
+            // 主视图淡出
+            mainView.style.opacity = '0';
+            mainView.style.pointerEvents = 'none';
+
+            // 延迟后显示模态框
+            setTimeout(() => {
+                modal.classList.remove('hidden');
+                
+                // 触发动画重绘
+                void modalContent.offsetWidth; 
+                
+                modalContent.classList.add('modal-enter-active');
+                modalContent.classList.remove('modal-enter');
+                
+                isAnimating = false;
+            }, 600);
+        }
+
+        function closeBox() {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            const mainView = document.getElementById('main-view');
+            const modal = document.getElementById('result-modal');
+            const modalContent = document.getElementById('modal-content');
+
+            // 模态框退出动画
+            modalContent.classList.remove('modal-enter-active');
+            modalContent.classList.add('modal-exit-active');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modalContent.classList.remove('modal-exit-active');
+                modalContent.classList.add('modal-enter'); // 恢复初始状态
+
+                // 主视图淡入
+                mainView.style.opacity = '1';
+                mainView.style.pointerEvents = 'auto';
+                
+                isAnimating = false;
+            }, 500);
+        }
+    </script>
+</body>
+</html>
